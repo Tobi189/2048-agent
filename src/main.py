@@ -1,6 +1,7 @@
 from game.board import print_board
-from game.logic import apply_move, get_legal_moves, has_legal_moves
+from game.logic import apply_move, get_legal_moves
 from game.spawn import create_initial_board, spawn_random_tile
+from game.state import get_max_tile, get_score_after_move, has_won, is_game_over
 
 MOVE_MAP = {
     "w": "up",
@@ -12,15 +13,23 @@ MOVE_MAP = {
 
 def main() -> None:
     current_board = create_initial_board()
+    score = 0
+    win_announced = False
 
     while True:
         print("\nCurrent board:")
         print_board(current_board)
+        print(f"Score: {score}")
+        print(f"Max tile: {get_max_tile(current_board)}")
 
         legal_moves = get_legal_moves(current_board)
         print("Legal moves:", legal_moves)
 
-        if not has_legal_moves(current_board):
+        if has_won(current_board) and not win_announced:
+            print("2048 reached!")
+            win_announced = True
+
+        if is_game_over(current_board):
             print("Game over.")
             break
 
@@ -42,6 +51,7 @@ def main() -> None:
         print(f"Board changed: {changed}")
 
         if changed:
+            score = get_score_after_move(score, reward)
             current_board = spawn_random_tile(new_board)
         else:
             print("That move does nothing.")
