@@ -1,12 +1,6 @@
 from game.board import print_board
 from game.logic import apply_move, get_legal_moves, has_legal_moves
-
-board = [
-    [2, 0, 2, 4],
-    [0, 4, 4, 0],
-    [2, 2, 0, 0],
-    [0, 0, 0, 0],
-]
+from game.spawn import create_initial_board, spawn_random_tile
 
 MOVE_MAP = {
     "w": "up",
@@ -17,7 +11,7 @@ MOVE_MAP = {
 
 
 def main() -> None:
-    current_board = [row[:] for row in board]
+    current_board = create_initial_board()
 
     while True:
         print("\nCurrent board:")
@@ -48,7 +42,7 @@ def main() -> None:
         print(f"Board changed: {changed}")
 
         if changed:
-            current_board = new_board
+            current_board = spawn_random_tile(new_board)
         else:
             print("That move does nothing.")
 
