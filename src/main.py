@@ -1,0 +1,57 @@
+from game.board import print_board
+from game.logic import apply_move, get_legal_moves, has_legal_moves
+
+board = [
+    [2, 0, 2, 4],
+    [0, 4, 4, 0],
+    [2, 2, 0, 0],
+    [0, 0, 0, 0],
+]
+
+MOVE_MAP = {
+    "w": "up",
+    "a": "left",
+    "s": "down",
+    "d": "right",
+}
+
+
+def main() -> None:
+    current_board = [row[:] for row in board]
+
+    while True:
+        print("\nCurrent board:")
+        print_board(current_board)
+
+        legal_moves = get_legal_moves(current_board)
+        print("Legal moves:", legal_moves)
+
+        if not has_legal_moves(current_board):
+            print("Game over.")
+            break
+
+        user_input = input("Enter move (w/a/s/d) or q to quit: ").strip().lower()
+
+        if user_input == "q":
+            print("Exiting.")
+            break
+
+        if user_input not in MOVE_MAP:
+            print("Invalid input.")
+            continue
+
+        direction = MOVE_MAP[user_input]
+        new_board, reward, changed = apply_move(current_board, direction)
+
+        print(f"Move: {direction}")
+        print(f"Reward gained: {reward}")
+        print(f"Board changed: {changed}")
+
+        if changed:
+            current_board = new_board
+        else:
+            print("That move does nothing.")
+
+
+if __name__ == "__main__":
+    main()
