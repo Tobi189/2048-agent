@@ -1,11 +1,13 @@
 import random
 import unittest
 
-from src.game.board import get_empty_cells
+from src.game.board import bitboard_to_board, board_to_bitboard, get_empty_cells
 from src.game.spawn import (
     choose_new_tile_value,
+    create_initial_bitboard,
     create_initial_board,
     spawn_random_tile,
+    spawn_random_tile_bitboard,
 )
 
 
@@ -56,7 +58,6 @@ class TestSpawn(unittest.TestCase):
         rng = random.Random(42)
 
         new_board = spawn_random_tile(board, rng)
-
         self.assertEqual(new_board, board)
 
     def test_create_initial_board(self):
@@ -75,6 +76,33 @@ class TestSpawn(unittest.TestCase):
 
         empty_cells = get_empty_cells(board)
         self.assertEqual(len(empty_cells), 14)
+
+    def test_spawn_random_tile_bitboard(self):
+        board = [
+            [0, 0, 0, 0],
+            [0, 2, 0, 0],
+            [0, 0, 0, 0],
+            [0, 0, 0, 0],
+        ]
+        bitboard = board_to_bitboard(board)
+        rng = random.Random(42)
+
+        new_bitboard = spawn_random_tile_bitboard(bitboard, rng)
+        new_board = bitboard_to_board(new_bitboard)
+
+        non_zero_values = [cell for row in new_board for cell in row if cell != 0]
+        self.assertEqual(len(non_zero_values), 2)
+        self.assertIn(2, non_zero_values)
+
+    def test_create_initial_bitboard(self):
+        rng = random.Random(42)
+        bitboard = create_initial_bitboard(rng)
+        board = bitboard_to_board(bitboard)
+
+        non_zero_values = [cell for row in board for cell in row if cell != 0]
+        self.assertEqual(len(non_zero_values), 2)
+        for value in non_zero_values:
+            self.assertIn(value, [2, 4])
 
 
 if __name__ == "__main__":

@@ -1,5 +1,6 @@
 import unittest
 
+from src.game.board import board_to_bitboard
 from src.game.state import get_max_tile, get_score_after_move, has_won, is_game_over
 
 
@@ -52,6 +53,19 @@ class TestState(unittest.TestCase):
             [4, 2, 4, 0],
         ]
         self.assertFalse(is_game_over(board))
+
+    def test_bitboard_versions_match(self):
+        board = [
+            [2, 4, 8, 16],
+            [32, 64, 128, 256],
+            [2, 4, 8, 16],
+            [32, 64, 128, 1024],
+        ]
+        bitboard = board_to_bitboard(board)
+
+        self.assertEqual(get_max_tile(bitboard), get_max_tile(board))
+        self.assertEqual(has_won(bitboard), has_won(board))
+        self.assertEqual(is_game_over(bitboard), is_game_over(board))
 
 
 if __name__ == "__main__":

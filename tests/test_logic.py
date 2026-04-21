@@ -1,7 +1,9 @@
 import unittest
 
+from src.game.board import board_to_bitboard, bitboard_to_board
 from src.game.logic import (
     apply_move,
+    apply_move_bitboard,
     compress_line_left,
     get_legal_moves,
     has_legal_moves,
@@ -152,6 +154,24 @@ class TestLogic(unittest.TestCase):
         self.assertIn("right", legal)
         self.assertIn("down", legal)
         self.assertNotIn("up", legal)
+
+    def test_bitboard_move_matches_list_move(self):
+        board = [
+            [2, 0, 2, 4],
+            [0, 4, 4, 0],
+            [2, 2, 2, 0],
+            [0, 0, 0, 2],
+        ]
+        bitboard = board_to_bitboard(board)
+
+        for direction in ("left", "right", "up", "down"):
+            expected_board, expected_reward, expected_changed = apply_move(board, direction)
+            got_bitboard, got_reward, got_changed = apply_move_bitboard(bitboard, direction)
+            got_board = bitboard_to_board(got_bitboard)
+
+            self.assertEqual(got_board, expected_board)
+            self.assertEqual(got_reward, expected_reward)
+            self.assertEqual(got_changed, expected_changed)
 
 
 if __name__ == "__main__":

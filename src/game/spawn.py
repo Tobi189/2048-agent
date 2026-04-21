@@ -1,56 +1,62 @@
 from __future__ import annotations
 
 import random
-from typing import Optional
+from typing import Optional, Union
 
-from .board import Board, copy_board, get_empty_cells, validate_board
+from .board import (
+    Board,
+    BitBoard,
+    bitboard_to_board,
+    board_to_bitboard,
+    get_empty_positions_bitboard,
+    set_cell_exponent,
+    validate_bitboard,
+)
 
 TWO_PROBABILITY = 0.9
 FOUR_PROBABILITY = 0.1
 
 
 def choose_new_tile_value(rng: Optional[random.Random] = None) -> int:
-    """
-    Return the value of a newly spawned tile.
-
-    By default:
-    - 2 with probability 0.9
-    - 4 with probability 0.1
-    """
     rng = rng or random
     return 2 if rng.random() < TWO_PROBABILITY else 4
 
 
-def spawn_random_tile(board: Board, rng: Optional[random.Random] = None) -> Board:
-    """
-    Return a new board with one random tile (2 or 4) placed
-    in a random empty cell.
+def _choose_new_tile_exponent(rng: Optional[random.Random] = None) -> int:
+    return 1 if choose_new_tile_value(rng) == 2 else 2
 
-    If the board has no empty cells, returns a copy unchanged.
-    """
-    validate_board(board)
+
+def spawn_random_tile_bitboard(bitboard: BitBoard, rng: Optional[random.Random] = None) -> BitBoard:
+    validate_bitboard(bitboard)
     rng = rng or random
 
-    new_board = copy_board(board)
-    empty_cells = get_empty_cells(new_board)
+    empty_positions = get_empty_positions_bitboard(bitboard)
+    if not empty_positions:
+        return bitboard
 
-    if not empty_cells:
-        return new_board
+    idx = rng.choice(empty_positions)
+    exp = _choose_new_tile_exponent(rng)
+    return set_cell_exponent(bitboard, idx, exp)
 
-    row, col = rng.choice(empty_cells)
-    new_board[row][col] = choose_new_tile_value(rng)
 
-    return new_board
+def spawn_random_tile(board: Union[Board, BitBoard], rng: Optional[random.Random] = None) -> Union[Board, BitBoard]:
+    rng = rng or random
+
+    if isinstance(board, int):
+        return spawn_random_tile_bitboard(board, rng)
+
+    bitboard = board_to_bitboard(board)
+    spawned = spawn_random_tile_bitboard(bitboard, rng)
+    return bitboard_to_board(spawned)
+
+
+def create_initial_bitboard(rng: Optional[random.Random] = None) -> BitBoard:
+    rng = rng or random
+    bitboard = 0
+    bitboard = spawn_random_tile_bitboard(bitboard, rng)
+    bitboard = spawn_random_tile_bitboard(bitboard, rng)
+    return bitboard
 
 
 def create_initial_board(rng: Optional[random.Random] = None) -> Board:
-    """
-    Create a fresh board with two random starting tiles.
-    """
-    from .board import create_empty_board
-
-    rng = rng or random
-    board = create_empty_board()
-    board = spawn_random_tile(board, rng)
-    board = spawn_random_tile(board, rng)
-    return board
+    return bitboard_to_board(create_initial_bitboard(rng))

@@ -1,36 +1,28 @@
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
-from .board import Board, validate_board
-from .utils import reverse_rows, transpose_board
+from .board import (
+    Board,
+    BitBoard,
+    bitboard_to_board,
+    board_to_bitboard,
+    validate_bitboard,
+    validate_board,
+)
 
 MoveResult = Tuple[Board, int, bool]
+BitMoveResult = Tuple[BitBoard, int, bool]
 VALID_MOVES = {"left", "right", "up", "down"}
 
 
 def compress_line_left(line: List[int]) -> List[int]:
-    """
-    Shift all non-zero values to the left, preserving order.
-
-    Example:
-        [2, 0, 2, 4] -> [2, 2, 4, 0]
-    """
     non_zero = [value for value in line if value != 0]
     zeros = [0] * (len(line) - len(non_zero))
     return non_zero + zeros
 
 
 def merge_line_left(line: List[int]) -> Tuple[List[int], int]:
-    """
-    Merge equal adjacent tiles from left to right, once per pair.
-
-    Assumes the line is already compressed left.
-
-    Example:
-        [2, 2, 4, 0] -> ([4, 4, 0, 0], 4)
-        [2, 2, 2, 2] -> ([4, 4, 0, 0], 8)
-    """
     merged = line[:]
     reward = 0
 
@@ -45,22 +37,24 @@ def merge_line_left(line: List[int]) -> Tuple[List[int], int]:
 
 
 def process_line_left(line: List[int]) -> Tuple[List[int], int]:
-    """
-    Full left-move processing for a single row/column:
-    compress -> merge -> compress
-    """
     compressed = compress_line_left(line)
     merged, reward = merge_line_left(compressed)
     return merged, reward
 
 
-def move_left(board: Board) -> MoveResult:
-    """
-    Apply a left move to the board.
+def _copy_board(board: Board) -> Board:
+    return [row[:] for row in board]
 
-    Returns:
-        new_board, reward_gained, changed
-    """
+
+def _reverse_rows(board: Board) -> Board:
+    return [list(reversed(row)) for row in board]
+
+
+def _transpose_board(board: Board) -> Board:
+    return [list(row) for row in zip(*board)]
+
+
+def _move_left_board(board: Board) -> MoveResult:
     validate_board(board)
 
     new_board: Board = []
@@ -75,52 +69,119 @@ def move_left(board: Board) -> MoveResult:
     return new_board, total_reward, changed
 
 
-def move_right(board: Board) -> MoveResult:
-    """
-    Apply a right move by reversing rows, moving left, then reversing back.
-    """
+def _move_right_board(board: Board) -> MoveResult:
     validate_board(board)
 
-    reversed_board = reverse_rows(board)
-    moved_board, reward, changed = move_left(reversed_board)
-    restored_board = reverse_rows(moved_board)
+    reversed_board = _reverse_rows(board)
+    moved_board, reward, _ = _move_left_board(reversed_board)
+    restored_board = _reverse_rows(moved_board)
 
     changed = restored_board != board
     return restored_board, reward, changed
 
 
-def move_up(board: Board) -> MoveResult:
-    """
-    Apply an up move by transposing, moving left, then transposing back.
-    """
+def _move_up_board(board: Board) -> MoveResult:
     validate_board(board)
 
-    transposed = transpose_board(board)
-    moved_board, reward, changed = move_left(transposed)
-    restored_board = transpose_board(moved_board)
+    transposed = _transpose_board(board)
+    moved_board, reward, _ = _move_left_board(transposed)
+    restored_board = _transpose_board(moved_board)
 
     changed = restored_board != board
     return restored_board, reward, changed
 
 
-def move_down(board: Board) -> MoveResult:
-    """
-    Apply a down move by transposing, moving right, then transposing back.
-    """
+def _move_down_board(board: Board) -> MoveResult:
     validate_board(board)
 
-    transposed = transpose_board(board)
-    moved_board, reward, changed = move_right(transposed)
-    restored_board = transpose_board(moved_board)
+    transposed = _transpose_board(board)
+    moved_board, reward, _ = _move_right_board(transposed)
+    restored_board = _transpose_board(moved_board)
 
     changed = restored_board != board
     return restored_board, reward, changed
 
 
-def apply_move(board: Board, direction: str) -> MoveResult:
-    """
-    Apply a move in one of: left, right, up, down.
-    """
+def move_left_bitboard(bitboard: BitBoard) -> BitMoveResult:
+    validate_bitboard(bitboard)
+    board = bitboard_to_board(bitboard)
+    moved_board, reward, changed = _move_left_board(board)
+    return board_to_bitboard(moved_board), reward, changed
+
+
+def move_right_bitboard(bitboard: BitBoard) -> BitMoveResult:
+    validate_bitboard(bitboard)
+    board = bitboard_to_board(bitboard)
+    moved_board, reward, changed = _move_right_board(board)
+    return board_to_bitboard(moved_board), reward, changed
+
+
+def move_up_bitboard(bitboard: BitBoard) -> BitMoveResult:
+    validate_bitboard(bitboard)
+    board = bitboard_to_board(bitboard)
+    moved_board, reward, changed = _move_up_board(board)
+    return board_to_bitboard(moved_board), reward, changed
+
+
+def move_down_bitboard(bitboard: BitBoard) -> BitMoveResult:
+    validate_bitboard(bitboard)
+    board = bitboard_to_board(bitboard)
+    moved_board, reward, changed = _move_down_board(board)
+    return board_to_bitboard(moved_board), reward, changed
+
+
+def apply_move_bitboard(bitboard: BitBoard, direction: str) -> BitMoveResult:
+    validate_bitboard(bitboard)
+
+    direction = direction.lower().strip()
+    if direction not in VALID_MOVES:
+        raise ValueError(f"Invalid move '{direction}'. Valid moves: {sorted(VALID_MOVES)}")
+
+    if direction == "left":
+        return move_left_bitboard(bitboard)
+    if direction == "right":
+        return move_right_bitboard(bitboard)
+    if direction == "up":
+        return move_up_bitboard(bitboard)
+    return move_down_bitboard(bitboard)
+
+
+def move_left(board: Union[Board, BitBoard]) -> Union[MoveResult, BitMoveResult]:
+    if isinstance(board, int):
+        return move_left_bitboard(board)
+
+    validate_board(board)
+    return _move_left_board(_copy_board(board))
+
+
+def move_right(board: Union[Board, BitBoard]) -> Union[MoveResult, BitMoveResult]:
+    if isinstance(board, int):
+        return move_right_bitboard(board)
+
+    validate_board(board)
+    return _move_right_board(_copy_board(board))
+
+
+def move_up(board: Union[Board, BitBoard]) -> Union[MoveResult, BitMoveResult]:
+    if isinstance(board, int):
+        return move_up_bitboard(board)
+
+    validate_board(board)
+    return _move_up_board(_copy_board(board))
+
+
+def move_down(board: Union[Board, BitBoard]) -> Union[MoveResult, BitMoveResult]:
+    if isinstance(board, int):
+        return move_down_bitboard(board)
+
+    validate_board(board)
+    return _move_down_board(_copy_board(board))
+
+
+def apply_move(board: Union[Board, BitBoard], direction: str) -> Union[MoveResult, BitMoveResult]:
+    if isinstance(board, int):
+        return apply_move_bitboard(board, direction)
+
     validate_board(board)
 
     direction = direction.lower().strip()
@@ -128,31 +189,42 @@ def apply_move(board: Board, direction: str) -> MoveResult:
         raise ValueError(f"Invalid move '{direction}'. Valid moves: {sorted(VALID_MOVES)}")
 
     if direction == "left":
-        return move_left(board)
+        return _move_left_board(_copy_board(board))
     if direction == "right":
-        return move_right(board)
+        return _move_right_board(_copy_board(board))
     if direction == "up":
-        return move_up(board)
-    return move_down(board)
+        return _move_up_board(_copy_board(board))
+    return _move_down_board(_copy_board(board))
 
 
-def has_legal_moves(board: Board) -> bool:
-    """
-    Return True if at least one move changes the board.
-    """
+def has_legal_moves(board: Union[Board, BitBoard]) -> bool:
+    if isinstance(board, int):
+        validate_bitboard(board)
+        for direction in ("left", "right", "up", "down"):
+            _, _, changed = apply_move_bitboard(board, direction)
+            if changed:
+                return True
+        return False
+
     validate_board(board)
 
-    for direction in VALID_MOVES:
+    for direction in ("left", "right", "up", "down"):
         _, _, changed = apply_move(board, direction)
         if changed:
             return True
     return False
 
 
-def get_legal_moves(board: Board) -> List[str]:
-    """
-    Return a list of moves that would change the board.
-    """
+def get_legal_moves(board: Union[Board, BitBoard]) -> List[str]:
+    if isinstance(board, int):
+        validate_bitboard(board)
+        legal_moves: List[str] = []
+        for direction in ("left", "right", "up", "down"):
+            _, _, changed = apply_move_bitboard(board, direction)
+            if changed:
+                legal_moves.append(direction)
+        return legal_moves
+
     validate_board(board)
 
     legal_moves: List[str] = []
@@ -160,5 +232,4 @@ def get_legal_moves(board: Board) -> List[str]:
         _, _, changed = apply_move(board, direction)
         if changed:
             legal_moves.append(direction)
-
     return legal_moves

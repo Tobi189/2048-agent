@@ -3,9 +3,9 @@ from __future__ import annotations
 from typing import Any, Dict, Optional, Tuple
 import random
 
-from .board import Board, copy_board
-from .logic import apply_move, get_legal_moves
-from .spawn import create_initial_board, spawn_random_tile
+from .board import Board, BitBoard, bitboard_to_board
+from .logic import apply_move_bitboard, get_legal_moves
+from .spawn import create_initial_bitboard, spawn_random_tile_bitboard
 from .state import get_max_tile, get_score_after_move, has_won, is_game_over
 
 
@@ -16,7 +16,7 @@ class Game2048Env:
     def __init__(self, target: int = 2048, rng: Optional[random.Random] = None) -> None:
         self.target = target
         self.rng = rng or random.Random()
-        self.board: Board = []
+        self.board: BitBoard = 0
         self.score: int = 0
         self.done: bool = False
         self.won: bool = False
@@ -24,15 +24,15 @@ class Game2048Env:
         self.reset()
 
     def reset(self) -> Board:
-        self.board = create_initial_board(self.rng)
+        self.board = create_initial_bitboard(self.rng)
         self.score = 0
         self.done = False
         self.won = False
         self.move_count = 0
-        return copy_board(self.board)
+        return bitboard_to_board(self.board)
 
     def get_state(self) -> Board:
-        return copy_board(self.board)
+        return bitboard_to_board(self.board)
 
     def get_score(self) -> int:
         return self.score
@@ -50,11 +50,11 @@ class Game2048Env:
         if self.done:
             raise RuntimeError("Cannot call step() after game is over. Call reset() first.")
 
-        new_board, reward, changed = apply_move(self.board, action)
+        new_board, reward, changed = apply_move_bitboard(self.board, action)
 
         if changed:
             self.score = get_score_after_move(self.score, reward)
-            self.board = spawn_random_tile(new_board, self.rng)
+            self.board = spawn_random_tile_bitboard(new_board, self.rng)
             self.move_count += 1
         else:
             self.board = new_board
@@ -71,4 +71,4 @@ class Game2048Env:
             "legal_moves": self.get_legal_moves() if not self.done else [],
         }
 
-        return copy_board(self.board), reward, self.done, info
+        return bitboard_to_board(self.board), reward, self.done, info
