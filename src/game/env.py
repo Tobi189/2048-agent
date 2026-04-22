@@ -10,6 +10,7 @@ from .state import get_max_tile, get_score_after_move, has_won, is_game_over
 
 
 StepResult = Tuple[Board, int, bool, Dict[str, Any]]
+BitStepResult = Tuple[BitBoard, int, bool, Dict[str, Any]]
 
 
 class Game2048Env:
@@ -21,18 +22,24 @@ class Game2048Env:
         self.done: bool = False
         self.won: bool = False
         self.move_count: int = 0
-        self.reset()
+        self.reset_bitboard()
 
     def reset(self) -> Board:
+        return bitboard_to_board(self.reset_bitboard())
+
+    def reset_bitboard(self) -> BitBoard:
         self.board = create_initial_bitboard(self.rng)
         self.score = 0
         self.done = False
         self.won = False
         self.move_count = 0
-        return bitboard_to_board(self.board)
+        return self.board
 
     def get_state(self) -> Board:
         return bitboard_to_board(self.board)
+
+    def get_bitboard_state(self) -> BitBoard:
+        return self.board
 
     def get_score(self) -> int:
         return self.score
@@ -47,6 +54,10 @@ class Game2048Env:
         return get_legal_moves(self.board)
 
     def step(self, action: str) -> StepResult:
+        next_board, reward, done, info = self.step_bitboard(action)
+        return bitboard_to_board(next_board), reward, done, info
+
+    def step_bitboard(self, action: str) -> BitStepResult:
         if self.done:
             raise RuntimeError("Cannot call step() after game is over. Call reset() first.")
 
@@ -61,6 +72,7 @@ class Game2048Env:
 
         self.won = has_won(self.board, self.target)
         self.done = is_game_over(self.board)
+        legal_moves = [] if self.done else get_legal_moves(self.board)
 
         info: Dict[str, Any] = {
             "changed": changed,
@@ -68,7 +80,7 @@ class Game2048Env:
             "max_tile": get_max_tile(self.board),
             "won": self.won,
             "move_count": self.move_count,
-            "legal_moves": self.get_legal_moves() if not self.done else [],
+            "legal_moves": legal_moves,
         }
 
-        return bitboard_to_board(self.board), reward, self.done, info
+        return self.board, reward, self.done, info

@@ -9,6 +9,7 @@ Position = Tuple[int, int]
 BOARD_SIZE = 4
 CELL_COUNT = BOARD_SIZE * BOARD_SIZE
 NIBBLE_MASK = 0xF
+MAX_EXPONENT = NIBBLE_MASK
 MAX_BITBOARD = (1 << 64) - 1
 
 
@@ -99,7 +100,12 @@ def tile_to_exponent(value: int) -> int:
         return 0
     if value & (value - 1):
         raise ValueError("Non-zero tile values must be powers of two.")
-    return value.bit_length() - 1
+    exp = value.bit_length() - 1
+    if exp > MAX_EXPONENT:
+        raise ValueError(
+            f"Tile value {value} is too large for 4-bit bitboard storage; maximum supported tile is {1 << MAX_EXPONENT}."
+        )
+    return exp
 
 
 def exponent_to_tile(exp: int) -> int:
@@ -107,6 +113,8 @@ def exponent_to_tile(exp: int) -> int:
         raise TypeError("Exponent must be an integer.")
     if exp < 0:
         raise ValueError("Exponent cannot be negative.")
+    if exp > MAX_EXPONENT:
+        raise ValueError(f"Exponent must fit in 4 bits (0..{MAX_EXPONENT}).")
     return 0 if exp == 0 else (1 << exp)
 
 
